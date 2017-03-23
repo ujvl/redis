@@ -49,6 +49,8 @@
 #include <lua.h>
 #include <signal.h>
 
+#include <mysql.h>
+
 typedef long long mstime_t; /* millisecond time type. */
 
 #include "ae.h"      /* Event driven programming library */
@@ -852,6 +854,7 @@ struct clusterState;
 struct redisServer {
     /* General */
     pid_t pid;                  /* Main process pid. */
+    MYSQL *mysql_conn;                /* MySQL connection to persistently stored keys */
     char *configfile;           /* Absolute config file path, or NULL */
     char *executable;           /* Absolute executable file path. */
     char **exec_argv;           /* Executable argv vector (copy). */

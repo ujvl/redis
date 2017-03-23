@@ -169,8 +169,59 @@ int getGenericCommand(client *c) {
     }
 }
 
+int getAndCheckMySQLCommand(client *c) {
+    robj *o;
+
+    if ((o = lookupKeyRead(c->db,c->argv[1])) == NULL) {
+
+        // Prepare MySQL query
+        char *query_str;
+        asprintf(&query_str, "select * from kvtable where id=%s;", (char *) c->argv[1]->ptr);
+
+        // Execute MySQL query
+        int res = mysql_query(server.mysql_conn, query_str);
+        free(query_str);
+        
+        if (res == 0) {
+
+          // Process query result
+          MYSQL_RES *result = mysql_store_result(server.mysql_conn); 
+          MYSQL_ROW row;
+          if (result == NULL || (row = mysql_fetch_row(result)) == NULL) {
+              serverLog(LL_WARNING, "MySQL couldn't find the key %s!", (char *) c->argv[1]->ptr);
+              addReply(c, shared.nullbulk);
+              return C_ERR;
+          }
+
+          // Insert key-value pair into Redis
+          o = createObject(OBJ_STRING, sdsnew(row[1])); 
+          addReplyBulk(c, o);
+          mysql_free_result(result);
+          o = tryObjectEncoding(o);
+          setKey(c->db, c->argv[1], o);
+          notifyKeyspaceEvent(NOTIFY_STRING, "set", c->argv[1], c->db->id);
+          
+          return C_OK;
+
+        } else {
+          serverLog(LL_WARNING, "MySQL couldn't find the key %s!", (char *) c->argv[1]->ptr);
+          addReply(c, shared.nullbulk);
+          return C_ERR;
+        }
+    } 
+    
+    if (o->type != OBJ_STRING) {
+        addReply(c,shared.wrongtypeerr);
+        return C_ERR;
+    } else {
+        addReplyBulk(c,o);
+        return C_OK;
+    }
+}
+
 void getCommand(client *c) {
-    getGenericCommand(c);
+    //getGenericCommand(c);
+    getAndCheckMySQLCommand(c);
 }
 
 void getsetCommand(client *c) {

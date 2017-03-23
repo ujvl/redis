@@ -1764,6 +1764,13 @@ void initServer(void) {
     }
 
     server.pid = getpid();
+
+    server.mysql_conn = mysql_init(NULL);
+    if (!mysql_real_connect(server.mysql_conn, "localhost", "root", NULL, "data", 0, NULL, 0)) {
+      serverLog(LL_WARNING, "MySQL couldn't connect, apparently: %s\n", mysql_error(server.mysql_conn));
+      return;
+    }
+
     server.current_client = NULL;
     server.clients = listCreate();
     server.clients_to_close = listCreate();
